@@ -249,6 +249,41 @@
     .scale{padding-left:0;} .toggle-row{padding-left:0;} .cat-pill{padding-left:0;}
     .item-text{font-size:14.5px;}
   }
+
+  /* ===== Eredmények: műveletsáv ===== */
+  .result-actions{
+    display:flex; gap:10px; flex-wrap:wrap; margin:0 0 18px;
+  }
+  .result-actions button{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--accent); color:var(--accent-ink); border:1px solid var(--accent);
+    border-radius:10px; padding:10px 16px; font-weight:700; font-size:13.5px; cursor:pointer;
+  }
+  .result-actions button.secondary{
+    background:var(--surface); color:var(--ink); border-color:var(--line);
+  }
+  .result-actions button:hover{ filter:brightness(1.05); }
+
+  /* ===== Print / PDF: csak az eredmények látszódjanak ===== */
+  @media print{
+    :root{
+      --bg:#ffffff; --bg-2:#ffffff; --surface:#ffffff; --surface-2:#f5f5f5; --surface-3:#eeeeee;
+      --line:#cccccc; --line-soft:#dddddd; --ink:#111111; --ink-dim:#333333; --ink-faint:#666666;
+      --accent:#8a5a12; --accent-ink:#ffffff; --accent-soft:#f5ecd8;
+      --bar:#333333; --bar-track:#dddddd; --good:#1f7a3a; --bad:#a63a20;
+      --shadow:none;
+    }
+    body{background:#fff; color:#111;}
+    .hud, nav.tabs, footer, .result-actions{ display:none !important; }
+    .app{max-width:none; padding:0 12px;}
+    main{margin-top:0;}
+    .card{box-shadow:none; border-color:#ccc; page-break-inside:avoid;}
+    .result-block{page-break-inside:avoid;}
+    .stat-fill{background:#555 !important;}
+    .top-pick{background:#333 !important; color:#fff !important;}
+    a{color:#111;}
+    .quest-head h2{font-size:22px;}
+  }
 </style>
 </head>
 <body>
@@ -706,11 +741,119 @@ function statBar(name, value, max, ticks, badgeText, badgeClass){
   return row;
 }
 
+function buildResultsText(){
+  const lines = [];
+  lines.push("PÁLYAVÁLASZTÓ KALANDNAPLÓ — EREDMÉNYEK");
+  lines.push("Dátum: " + new Date().toLocaleDateString("hu-HU"));
+  lines.push("");
+
+  // AHGM
+  const ahgmAnswered = Object.keys(state.ahgm).length;
+  lines.push("1) ÉRDEKLŐDÉSI TERÜLETEK (A·H·G·M)");
+  if(!ahgmAnswered){
+    lines.push("  — még nincs kitöltve");
+  } else {
+    const counts = countBy(AHGM, state.ahgm, "c");
+    const max = Math.max(0, ...AHGM_ORDER.map(k=>counts[k]||0));
+    AHGM_ORDER.slice().sort((a,b)=>(counts[b]||0)-(counts[a]||0)).forEach(k=>{
+      lines.push(`  ${AHGM_INFO[k].name}: ${counts[k]||0}/4`);
+    });
+    const top = AHGM_ORDER.filter(k=>(counts[k]||0)===max && max>0);
+    if(top.length){
+      lines.push("");
+      lines.push("  Legerősebb terület(ek): " + top.map(k=>AHGM_INFO[k].name).join(", "));
+      top.forEach(k=>{
+        lines.push("    • " + AHGM_INFO[k].desc);
+        lines.push("      Kapcsolódó ágazatok: " + AHGM_INFO[k].related);
+      });
+    }
+  }
+  lines.push("");
+
+  // SZABAD
+  const szabadAnswered = Object.keys(state.szabad).length;
+  lines.push("2) SZABADIDŐMÉRLEG");
+  if(!szabadAnswered){
+    lines.push("  — még nincs kitöltve");
+  } else {
+    const totals = sumBy(SZABAD, state.szabad, "c");
+    const sorted = SZABAD_ORDER.slice().sort((a,b)=>(totals[b]||0)-(totals[a]||0));
+    sorted.forEach(k=> lines.push(`  ${SZABAD_INFO[k].name}: ${totals[k]||0}/32`));
+    const topKey = sorted[0];
+    if(totals[topKey]){
+      lines.push("");
+      lines.push("  Legerősebb: " + SZABAD_INFO[topKey].name);
+      lines.push("    • " + SZABAD_INFO[topKey].desc);
+      lines.push("      Kapcsolódó terület: " + SZABAD_INFO[topKey].related);
+    }
+  }
+  lines.push("");
+
+  // KEPESSEG
+  const kepAnswered = Object.keys(state.kepesseg).length;
+  lines.push("3) KÉPESSÉGEK, KÉSZSÉGEK");
+  if(!kepAnswered){
+    lines.push("  — még nincs kitöltve");
+  } else {
+    const totals = sumBy(KEPESSEG, state.kepesseg, "c");
+    const sorted = KEP_ORDER.slice().sort((a,b)=>(totals[b]||0)-(totals[a]||0));
+    sorted.forEach(k=>{
+      const v = totals[k]||0;
+      const level = v>=18?"MAGAS":(v>=12?"KÖZEPES":"ALACSONY");
+      lines.push(`  ${KEPESSEG_INFO[k].name}: ${v}/20 [${level}]`);
+    });
+    const magas = sorted.filter(k=>(totals[k]||0)>=18);
+    if(magas.length){
+      lines.push("");
+      lines.push("  Kiemelkedő területek:");
+      magas.forEach(k=> lines.push(`    • ${KEPESSEG_INFO[k].name}: ${KEPESSEG_INFO[k].magas}`));
+    }
+  }
+  lines.push("");
+
+  // JOBS
+  const filledJobs = state.jobs.filter(j=>j.cim && j.cim.trim());
+  if(filledJobs.length){
+    lines.push("4) ELKÉPZELT FOGLALKOZÁSOK");
+    filledJobs.forEach(j=>{
+      lines.push("  • " + j.cim);
+      JOB_FIELDS.forEach(f=>{
+        if(j[f.key] && j[f.key].trim()){
+          lines.push(`      - ${f.label} ${j[f.key].trim()}`);
+        }
+      });
+    });
+    lines.push("");
+  }
+
+  lines.push("---");
+  lines.push("Forrás: Nemzeti Pályaorientációs Portál (eletpalya.munka.hu). Ez az összesítés tájékoztató jellegű.");
+  return lines.join("\n");
+}
+
 function renderEREDMENYEK(container){
   const head = document.createElement("div"); head.className="quest-head";
   head.innerHTML = `<div class="eyebrow">Karakterlap</div><h2>Eredmények</h2>
    <p>Ahogy haladsz a küldetésekkel, itt folyamatosan frissül az összesítés. Minél többet töltesz ki, annál pontosabb a kép.</p>`;
   container.appendChild(head);
+
+  const actions = document.createElement("div"); actions.className="result-actions";
+  const pdfBtn = document.createElement("button");
+  pdfBtn.type="button"; pdfBtn.innerHTML = "⬇ Letöltés PDF-ként";
+  pdfBtn.title = "Megnyitja a nyomtatási ablakot — a célt állítsd „Mentés PDF-ként”-re.";
+  pdfBtn.addEventListener("click", ()=> window.print());
+  actions.appendChild(pdfBtn);
+
+  const mailBtn = document.createElement("button");
+  mailBtn.type="button"; mailBtn.className="secondary"; mailBtn.innerHTML = "✉ Küldés emailben";
+  mailBtn.addEventListener("click", ()=>{
+    const subject = "Pályaválasztó Kalandnapló — eredmények";
+    const body = buildResultsText();
+    const href = "mailto:?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+    window.location.href = href;
+  });
+  actions.appendChild(mailBtn);
+  container.appendChild(actions);
 
   const ahgmAnswered = Object.keys(state.ahgm).length;
   const szabadAnswered = Object.keys(state.szabad).length;
