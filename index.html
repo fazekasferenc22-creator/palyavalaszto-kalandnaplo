@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8" />
+<title>Pályaválasztó Kalandnapló</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* ===== Tokens ===== */
+  :root{
+    /* dark is the primary identity of this page (HUD / quest-log aesthetic) */
+    --bg:#12141a;
+    --bg-2:#0d0f14;
+    --surface:#1c202b;
+    --surface-2:#242938;
+    --surface-3:#2c3241;
+    --line:#333a4a;
+    --line-soft:#282e3b;
+    --ink:#eef1f6;
+    --ink-dim:#9aa3b8;
+    --ink-faint:#6b7285;
+    --accent:#e7b34c;
+    --accent-ink:#241a06;
+    --accent-soft:rgba(231,179,76,.14);
+    --bar:#4fc7bb;
+    --bar-track:#242b38;
+    --good:#63c17e;
+    --bad:#e2745a;
+    --shadow: 0 12px 32px rgba(0,0,0,.35);
+    --radius-s:8px;
+    --radius-m:14px;
+    --radius-l:22px;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#eef0f4;
+      --bg-2:#e6e9f0;
+      --surface:#ffffff;
+      --surface-2:#e7eaf1;
+      --surface-3:#dde1ea;
+      --line:#d3d7e2;
+      --line-soft:#e1e4ec;
+      --ink:#171a22;
+      --ink-dim:#565f74;
+      --ink-faint:#838ca0;
+      --accent:#b8791f;
+      --accent-ink:#fff8ec;
+      --accent-soft:rgba(184,121,31,.12);
+      --bar:#1f8f83;
+      --bar-track:#dfe4ec;
+      --good:#2f8f52;
+      --bad:#c14f34;
+      --shadow: 0 12px 32px rgba(30,34,50,.10);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#eef0f4; --bg-2:#e6e9f0; --surface:#ffffff; --surface-2:#e7eaf1; --surface-3:#dde1ea;
+    --line:#d3d7e2; --line-soft:#e1e4ec; --ink:#171a22; --ink-dim:#565f74; --ink-faint:#838ca0;
+    --accent:#b8791f; --accent-ink:#fff8ec; --accent-soft:rgba(184,121,31,.12);
+    --bar:#1f8f83; --bar-track:#dfe4ec; --good:#2f8f52; --bad:#c14f34;
+    --shadow: 0 12px 32px rgba(30,34,50,.10);
+  }
+  :root[data-theme="dark"]{
+    --bg:#12141a; --bg-2:#0d0f14; --surface:#1c202b; --surface-2:#242938; --surface-3:#2c3241;
+    --line:#333a4a; --line-soft:#282e3b; --ink:#eef1f6; --ink-dim:#9aa3b8; --ink-faint:#6b7285;
+    --accent:#e7b34c; --accent-ink:#241a06; --accent-soft:rgba(231,179,76,.14);
+    --bar:#4fc7bb; --bar-track:#242b38; --good:#63c17e; --bad:#e2745a;
+    --shadow: 0 12px 32px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Manrope",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  h1,h2,h3,.display{
+    font-family:"Bricolage Grotesque","Manrope",system-ui,sans-serif;
+    text-wrap:balance;
+    letter-spacing:-0.01em;
+  }
+  .mono{font-family:"Space Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums;}
+  a{color:var(--accent);}
+  button{font-family:inherit;}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  /* ===== Layout shell ===== */
+  .app{max-width:920px;margin:0 auto;padding:0 20px 96px;}
+  .hud{
+    position:sticky; top:0; z-index:40;
+    background:linear-gradient(180deg, var(--bg) 78%, transparent);
+    padding:16px 0 10px;
+  }
+  .hud-inner{max-width:920px;margin:0 auto;padding:0 20px;}
+  .hud-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:baseline;gap:10px;}
+  .brand .mark{
+    font-family:"Space Mono",monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent); border:1px solid var(--line); padding:3px 7px; border-radius:6px; background:var(--surface);
+  }
+  .brand h1{font-size:20px;margin:0;font-weight:700;}
+  .xp{display:flex;align-items:center;gap:8px;font-family:"Space Mono",monospace;font-size:12px;color:var(--ink-dim);}
+  .xp .pct{color:var(--ink);font-weight:700;}
+
+  .xpbar{height:8px;border-radius:99px;background:var(--bar-track);overflow:hidden;margin-top:10px;border:1px solid var(--line-soft);}
+  .xpbar > i{display:block;height:100%;background:linear-gradient(90deg,var(--bar),var(--accent));width:0%;transition:width .4s ease;}
+
+  nav.tabs{display:flex;gap:6px;margin-top:12px;overflow-x:auto;padding-bottom:2px;}
+  nav.tabs::-webkit-scrollbar{height:4px;}
+  .tab-btn{
+    flex:0 0 auto; display:flex; align-items:center; gap:7px;
+    background:var(--surface); color:var(--ink-dim); border:1px solid var(--line);
+    padding:8px 13px; border-radius:99px; font-size:13px; font-weight:600; cursor:pointer;
+    white-space:nowrap;
+  }
+  .tab-btn .n{font-family:"Space Mono",monospace;font-size:11px;color:var(--ink-faint);}
+  .tab-btn[aria-selected="true"]{background:var(--accent-soft); color:var(--ink); border-color:var(--accent);}
+  .tab-btn .done{color:var(--good); font-size:13px;}
+
+  main{margin-top:18px;}
+  section.panel{display:none;}
+  section.panel.active{display:block; animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+  @media (prefers-reduced-motion:reduce){
+    .xpbar > i{transition:none;} section.panel.active{animation:none;}
+  }
+
+  .quest-head{margin-bottom:18px;}
+  .eyebrow{font-family:"Space Mono",monospace; font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--bar);}
+  .quest-head h2{font-size:26px;margin:6px 0 8px;}
+  .quest-head p{color:var(--ink-dim); line-height:1.55; max-width:64ch; margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--radius-m);
+    box-shadow:var(--shadow);
+  }
+
+  /* item rows */
+  .item{
+    display:flex; flex-direction:column; gap:12px;
+    padding:16px 18px; border-bottom:1px solid var(--line-soft);
+  }
+  .item:last-child{border-bottom:none;}
+  .item-top{display:flex; gap:12px; align-items:flex-start;}
+  .item-num{
+    font-family:"Space Mono",monospace; font-size:12px; color:var(--ink-faint);
+    background:var(--surface-2); border:1px solid var(--line-soft); border-radius:6px;
+    padding:2px 6px; flex:0 0 auto; margin-top:2px;
+  }
+  .item-text{font-size:15.5px; line-height:1.5; color:var(--ink);}
+
+  .scale{display:flex; gap:6px; flex-wrap:wrap; padding-left:34px;}
+  .scale button{
+    flex:1 1 0; min-width:52px;
+    background:var(--surface-2); color:var(--ink-dim); border:1px solid var(--line);
+    border-radius:10px; padding:9px 4px; cursor:pointer; text-align:center;
+  }
+  .scale button .v{display:block; font-family:"Space Mono",monospace; font-weight:700; font-size:15px; color:var(--ink);}
+  .scale button .l{display:block; font-size:9.5px; color:var(--ink-faint); margin-top:2px; line-height:1.2;}
+  .scale button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent);}
+  .scale button[aria-pressed="true"] .v, .scale button[aria-pressed="true"] .l{color:var(--accent-ink);}
+
+  .toggle-row{padding-left:34px;}
+  .toggle{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:99px;
+    padding:8px 16px; cursor:pointer; font-weight:600; font-size:13.5px; color:var(--ink-dim);
+  }
+  .toggle .dot{width:9px;height:9px;border-radius:99px;border:1.5px solid var(--ink-faint);}
+  .toggle[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent); color:var(--ink);}
+  .toggle[aria-pressed="true"] .dot{background:var(--accent); border-color:var(--accent);}
+
+  .cat-pill{
+    font-family:"Space Mono",monospace; font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--ink-faint); padding-left:34px;
+  }
+
+  /* results */
+  .stat-row{display:flex; align-items:center; gap:14px; padding:11px 0;}
+  .stat-name{flex:0 0 172px; font-size:13.5px; font-weight:600; color:var(--ink);}
+  .stat-track{flex:1 1 auto; position:relative; height:14px; background:var(--bar-track); border-radius:99px; overflow:visible;}
+  .stat-fill{position:absolute; inset:0; width:0%; background:var(--bar); border-radius:99px; transition:width .5s ease;}
+  .stat-tick{position:absolute; top:-3px; bottom:-3px; width:1px; background:var(--ink-faint); opacity:.55;}
+  .stat-tick span{position:absolute; top:-16px; font-size:9px; color:var(--ink-faint); font-family:"Space Mono",monospace; transform:translateX(-50%); white-space:nowrap;}
+  .stat-val{flex:0 0 44px; text-align:right; font-family:"Space Mono",monospace; font-weight:700; font-size:13px;}
+  .stat-badge{flex:0 0 auto; font-size:10px; font-family:"Space Mono",monospace; padding:2px 7px; border-radius:6px; border:1px solid var(--line);}
+  .badge-magas{color:var(--good); border-color:var(--good);}
+  .badge-kozepes{color:var(--accent); border-color:var(--accent);}
+  .badge-alacsony{color:var(--bad); border-color:var(--bad);}
+
+  .result-block{padding:18px; border-bottom:1px solid var(--line-soft);}
+  .result-block:last-child{border-bottom:none;}
+  .result-block h3{margin:0 0 4px; font-size:17px;}
+  .result-desc{font-size:13.5px; line-height:1.55; color:var(--ink-dim); margin:8px 0 0;}
+  .top-pick{
+    display:inline-block; margin-top:6px; font-family:"Space Mono",monospace; font-size:10.5px;
+    color:var(--accent-ink); background:var(--accent); padding:3px 9px; border-radius:6px; font-weight:700;
+    letter-spacing:.04em; text-transform:uppercase;
+  }
+
+  /* foglalkozasok */
+  .job-card{background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--radius-m); padding:18px; margin-bottom:14px; box-shadow:var(--shadow);}
+  .job-card input[type="text"], .job-card textarea{
+    width:100%; background:var(--surface-2); border:1px solid var(--line); border-radius:8px;
+    color:var(--ink); font-family:inherit; font-size:14px; padding:9px 11px; resize:vertical;
+  }
+  .job-title{font-family:"Bricolage Grotesque"; font-size:17px; font-weight:700; margin-bottom:10px; border:none; background:transparent; padding:0; width:100%;}
+  .job-title:focus{outline:none; border-bottom:1px solid var(--accent);}
+  .job-field{margin-bottom:10px;}
+  .job-field label{display:block; font-size:11px; color:var(--ink-faint); margin-bottom:4px; font-family:"Space Mono",monospace; letter-spacing:.03em;}
+  .job-remove{background:none;border:1px solid var(--line);color:var(--ink-faint);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;float:right;}
+  .add-job{
+    display:flex; align-items:center; gap:8px; background:var(--accent-soft); border:1px dashed var(--accent);
+    color:var(--ink); border-radius:var(--radius-m); padding:14px; cursor:pointer; width:100%; font-weight:700; font-size:14px; justify-content:center;
+  }
+
+  .prompt-box{background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--radius-m); padding:18px 20px; margin-bottom:18px; box-shadow:var(--shadow);}
+  .prompt-box p{margin:0 0 8px; line-height:1.6; font-size:14.5px; color:var(--ink-dim);}
+  .prompt-box p:last-child{margin-bottom:0;}
+
+  footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line-soft); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;}
+  footer small{color:var(--ink-faint); font-size:12px; line-height:1.5; max-width:52ch; display:block;}
+  .reset-btn{background:none; border:1px solid var(--line); color:var(--ink-dim); padding:8px 14px; border-radius:8px; font-size:12.5px; cursor:pointer;}
+  .reset-btn:hover{border-color:var(--bad); color:var(--bad);}
+  .reset-confirm{
+    position:absolute; right:0; bottom:calc(100% + 10px); z-index:50; width:250px;
+    background:var(--surface); border:1px solid var(--bad); border-radius:var(--radius-m);
+    box-shadow:var(--shadow); padding:14px;
+  }
+  .reset-confirm p{margin:0 0 12px; font-size:13px; line-height:1.5; color:var(--ink);}
+  .reset-confirm-actions{display:flex; gap:8px; justify-content:flex-end;}
+  .reset-confirm .reset-danger{background:var(--bad); border-color:var(--bad); color:#fff;}
+  .reset-confirm .reset-cancel{color:var(--ink-dim);}
+
+  .note{
+    font-size:12.5px; color:var(--ink-faint); background:var(--surface-2); border:1px solid var(--line-soft);
+    border-radius:10px; padding:10px 13px; margin:14px 0 0; line-height:1.5;
+  }
+
+  .empty-hint{color:var(--ink-faint); font-size:13.5px; text-align:center; padding:30px 10px;}
+
+  @media (max-width:560px){
+    .stat-name{flex-basis:112px; font-size:12.5px;}
+    .scale{padding-left:0;} .toggle-row{padding-left:0;} .cat-pill{padding-left:0;}
+    .item-text{font-size:14.5px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hud">
+    <div class="hud-inner">
+      <div class="hud-top">
+        <div class="brand"><span class="mark">QUEST LOG</span><h1>Pályaválasztó Kalandnapló</h1></div>
+        <div class="xp">Teljesítve: <span class="pct mono" id="pct">0%</span></div>
+      </div>
+      <div class="xpbar"><i id="xpfill"></i></div>
+      <nav class="tabs" id="tabs" role="tablist"></nav>
+    </div>
+  </div>
+
+  <main id="main"></main>
+
+  <footer>
+    <small>Forrás: Nemzeti Szakképzési és Felnőttképzési Hivatal / Nemzeti Pályaorientációs Portál (eletpalya.munka.hu). A válaszok csak ebben a böngészőben, ezen a gépen mentődnek el.</small>
+    <div id="resetWrap" style="position:relative;">
+      <button class="reset-btn" id="resetBtn" type="button">Összes válasz törlése</button>
+      <div id="resetConfirm" class="reset-confirm" hidden>
+        <p>Biztosan törlöd az összes eddigi válaszod? Ez nem visszavonható.</p>
+        <div class="reset-confirm-actions">
+          <button type="button" class="reset-btn reset-cancel" id="resetCancel">Mégse</button>
+          <button type="button" class="reset-btn reset-danger" id="resetConfirmBtn">Igen, törlöm</button>
+        </div>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+/* =========================================================
+   ADAT
+========================================================= */
+const AHGM = [
+ {n:1,t:"Szívesen foglalkozom növényekkel, állatokkal.",c:"A"},
+ {n:2,t:"Szívesen foglalkozom emberekkel.",c:"H"},
+ {n:3,t:"Könnyen ráveszem a barátaimat arra, amit akarok.",c:"G"},
+ {n:4,t:"Örülök, ha gépekkel, elektromos berendezésekkel dolgozhatok.",c:"M"},
+ {n:5,t:"Szívesen dolgozom kerti eszközökkel.",c:"A"},
+ {n:6,t:"Szeretek gépeket összeszerelni, javítani.",c:"M"},
+ {n:7,t:"Szeretek irodában, tiszta környezetben dolgozni.",c:"G"},
+ {n:8,t:"Szeretek embereket tanítani.",c:"H"},
+ {n:9,t:"Szívesen végzek otthon olyan munkákat, mint motorszerelés, mobiltelefon-szerelés, varrás, tapétázás.",c:"M"},
+ {n:10,t:"Szívesen oldok meg bonyolult számolási feladatokat.",c:"G"},
+ {n:11,t:"Szeretek emberekről gondoskodni, embereket ápolni.",c:"H"},
+ {n:12,t:"Szívesen végzek a szabadban fizikai munkát.",c:"A"},
+ {n:13,t:"Szívesen foglalkozom kisgyermekekkel.",c:"H"},
+ {n:14,t:"Szeretném megismerni, megérteni a természetben zajló folyamatokat (állatok, növények világa, környezetvédelem stb.).",c:"A"},
+ {n:15,t:"Szívesen tervezek, modellezek.",c:"M"},
+ {n:16,t:"Szeretek eladni, vásárolni.",c:"G"},
+];
+const AHGM_INFO = {
+ A:{name:"Agrár terület", desc:"Növények, állatok és a környezet életfeltételeinek gondozása — ez szükséges az élelmiszer-előállításhoz és a környezet megóvásához.", related:"Környezetvédelem és vízügy, mezőgazdaság és erdészet, élelmiszeripar"},
+ H:{name:"Humán terület", desc:"Emberekkel való együttműködés — gyerekek, fiatalok, felnőttek, idősek körülményeinek javítása, egészségük megőrzése, gyógyítása, nevelése, tanítása.", related:"Szociális, egészségügy, sport, rendészet és közszolgálat, pedagógia, előadóművészet"},
+ G:{name:"Gazdaság-szolgáltatás terület", desc:"Anyagi javak és szolgáltatások előállítása, mások igényeinek kielégítése, tanácsadás.", related:"Gazdálkodás és menedzsment, kereskedelem, turizmus-vendéglátás, kreatív ágazatok, közlekedés"},
+ M:{name:"Műszaki terület", desc:"A nyersanyag kitermelésétől a késztermékig — kevés fizikai erőt, de jó műszaki érzéket igénylő munka.", related:"Gépészet, elektronika, informatika és távközlés, építőipar, egészségügyi technika"},
+};
+
+const SZABAD = [
+ {n:1,t:"Szeretek fényképezni.",c:"ALKOTAS"},
+ {n:2,t:"Szeretek a barátaimmal lógni.",c:"EMBER"},
+ {n:3,t:"Szeretek olvasni.",c:"GONDOLAT"},
+ {n:4,t:"Stratégiai játékokat játszom számítógépen.",c:"KEZDEMENYEZES"},
+ {n:5,t:"Szabadidőmben szeretek fúrni-faragni, barkácsolni.",c:"TARGY"},
+ {n:6,t:"Szeretek emléktárgyakat gyűjteni.",c:"VEGREHAJTAS"},
+ {n:7,t:"Üvegfestéssel foglalkozom.",c:"ALKOTAS"},
+ {n:8,t:"Csetelek, üzengetek online.",c:"EMBER"},
+ {n:9,t:"Természettudományos kiállításokra járok.",c:"GONDOLAT"},
+ {n:10,t:"Szeretek politikai kérdésekről vitatkozni.",c:"KEZDEMENYEZES"},
+ {n:11,t:"Szeretek kertészkedni.",c:"TARGY"},
+ {n:12,t:"Én vagyok a család krónikása.",c:"VEGREHAJTAS"},
+ {n:13,t:"Szeretek írogatni, például blogot vezetek.",c:"ALKOTAS"},
+ {n:14,t:"Szeretek emailezni, közösségi oldalakat böngészni.",c:"EMBER"},
+ {n:15,t:"Állatvédőként aktívan tevékenykedem.",c:"GONDOLAT"},
+ {n:16,t:"Cserkészvezető vagyok.",c:"KEZDEMENYEZES"},
+ {n:17,t:"Szeretek sütni, főzni.",c:"TARGY"},
+ {n:18,t:"A háztartás vezetésével kapcsolatos magazinokat olvasok.",c:"VEGREHAJTAS"},
+ {n:19,t:"Kézműveskedek, például tűzzománcozással, agyagozással, karkötőkészítéssel foglalkozom.",c:"ALKOTAS"},
+ {n:20,t:"Gyakran segítek a barátaimnak lelki problémáik megoldásában.",c:"EMBER"},
+ {n:21,t:"Szabadidőmben sok időt töltök a számítógép előtt, információkat gyűjtve.",c:"GONDOLAT"},
+ {n:22,t:"Saját vállalkozást indítottam.",c:"KEZDEMENYEZES"},
+ {n:23,t:"Rendszeresen horgászom.",c:"TARGY"},
+ {n:24,t:"Szeretek pasziánszozni, kártyával vagy számítógépen.",c:"VEGREHAJTAS"},
+ {n:25,t:"Színjátszóköri tag vagyok.",c:"ALKOTAS"},
+ {n:26,t:"Sportcsapat tagja vagyok.",c:"EMBER"},
+ {n:27,t:"Ásványokat, köveket gyűjtök.",c:"GONDOLAT"},
+ {n:28,t:"Szabadidőmben üzletelek, vállalkozom, üzletet építek.",c:"KEZDEMENYEZES"},
+ {n:29,t:"Szeretek modellezni.",c:"TARGY"},
+ {n:30,t:"Szeretem böngészgetni a különféle szabályokat (pl. KRESZ változásai).",c:"VEGREHAJTAS"},
+ {n:31,t:"Múzeumba járok, művészeti kiállításokra.",c:"ALKOTAS"},
+ {n:32,t:"Szeretek bulikra járni.",c:"EMBER"},
+ {n:33,t:"Szeretek keresztrejtvényeket fejteni.",c:"GONDOLAT"},
+ {n:34,t:"Szeretek konferenciákra járni, tájékozódni a fontos eseményekről.",c:"KEZDEMENYEZES"},
+ {n:35,t:"Rendszeresen tornászom, fitnesz klubba járok.",c:"TARGY"},
+ {n:36,t:"Bélyegeket, szalvétát vagy érméket gyűjtök.",c:"VEGREHAJTAS"},
+ {n:37,t:"Hobbiból idegen nyelveket tanulok.",c:"ALKOTAS"},
+ {n:38,t:"Vallási közösségben aktív szerepet vállalok.",c:"EMBER"},
+ {n:39,t:"Szeretek sakkozni.",c:"GONDOLAT"},
+ {n:40,t:"Rendszeresen olvasok gazdasági lapokat.",c:"KEZDEMENYEZES"},
+ {n:41,t:"Szeretek kirándulni, túrázni.",c:"TARGY"},
+ {n:42,t:"Szabadidőmben a családfánkat kutatom.",c:"VEGREHAJTAS"},
+ {n:43,t:"Zenélni tanulok.",c:"ALKOTAS"},
+ {n:44,t:"Cserkészkedem.",c:"EMBER"},
+ {n:45,t:"Szeretek állatkertbe járni.",c:"GONDOLAT"},
+ {n:46,t:"Sportcsapat kapitánya vagyok.",c:"KEZDEMENYEZES"},
+ {n:47,t:"Számítógéppel, annak hardver részével foglalkozom.",c:"TARGY"},
+ {n:48,t:"Szeretek takarítani, rendet rakni.",c:"VEGREHAJTAS"},
+];
+const SZABAD_INFO = {
+ TARGY:{name:"Tárgyak iránti érdeklődés", desc:"Fontos, hogy belátható időn belül kézzelfogható, látható eredményt tudj felmutatni. Szívesen foglalkozol tervezgetéssel, gyakorlati problémák megoldásával, érdekelnek a testi ügyességet igénylő tevékenységek. A gyakorlati megoldások embere vagy.", related:"Természet/környezet, közlekedés/szállítás, ipar"},
+ GONDOLAT:{name:"Gondolatok iránti érdeklődés", desc:"Kíváncsi vagy a világ dolgai közötti összefüggésekre, szeretsz információkat gyűjteni, kutatni. Közel állnak hozzád a tudományos, tervezői tevékenységek, az elemzés és a logikai feladatok.", related:"Műszaki pályák, tudományok"},
+ ALKOTAS:{name:"Alkotás iránti érdeklődés", desc:"Izgalmasnak tartod, ha új, eredeti megoldásokat találhatsz ki. Fontos, hogy önállóan dolgozhass, és mindig új élményekkel, változatos feladatokkal találkozz.", related:"Művészet, kézművesség, szórakozás/sport"},
+ EMBER:{name:"Emberek iránti érdeklődés", desc:"Fontosnak tartod, hogy mások számára hasznos, segítő tevékenységet végezz. Szeretsz beszélgetéseket kezdeményezni, csapatban dolgozni.", related:"Oktatás, társadalom, kommunikáció, humán szolgáltatás"},
+ KEZDEMENYEZES:{name:"Kezdeményezéshez kötődő érdeklődés", desc:"Olyan helyzetekben érzed jól magad, ahol vállalhatod az irányító, szervező szerepet, mozgósítod és lelkesíted a többieket. Nagy vonalakban szeretsz gondolkodni.", related:"Kereskedelem, marketing, idegenforgalom, vendéglátás"},
+ VEGREHAJTAS:{name:"Végrehajtáshoz kötődő érdeklődés", desc:"Akkor érzed jól magad, ha pontosan tudod, mi a feladat. A határidők, szabályok inkább segítenek, mint gátolnak. Szereted a logikus, jól begyakorolható feladatokat.", related:"Gazdaság, pénzügy, üzlet/ügyvitel, adminisztráció"},
+};
+
+const KEPESSEG = [
+ {n:1,t:"Tisztán és érthetően fogalmazok szóban és írásban is.",c:"KOMM"},
+ {n:2,t:"Észreveszem, ha valaki szomorú.",c:"ERZELMI"},
+ {n:3,t:"Jól kijövök másokkal.",c:"ALKALMAZKODAS"},
+ {n:4,t:"A problémahelyzeteket jól kezelem.",c:"PROBLEMA"},
+ {n:5,t:"Ügyes vagyok a labdajátékokban.",c:"KEZMOZGAS"},
+ {n:6,t:"Az órákon mindig odafigyelek.",c:"FIGYELEM"},
+ {n:7,t:"Könnyen megoldom a logikai feladatokat / fejtörőket.",c:"MATEK"},
+ {n:8,t:"Jól teljesítek a csapatjátékokban / csapatversenyeken.",c:"CSAPAT"},
+ {n:9,t:"Eredeti elképzeléseim vannak.",c:"KREATIV"},
+ {n:10,t:"Térkép alapján jól tájékozódom.",c:"TERBELI"},
+ {n:11,t:"Feszült helyzetben nyugodt maradok.",c:"STRESSZ"},
+ {n:12,t:"A feladatmegoldások során keveset hibázok.",c:"PONTOSSAG"},
+ {n:13,t:"Ügyesen megszervezek bármilyen programot.",c:"SZERVEZES"},
+ {n:14,t:"A döntéseimet önállóan hozom meg.",c:"ONALLO"},
+ {n:15,t:"Tetteimért vállalom a felelősséget.",c:"FELELOSSEG"},
+ {n:16,t:"Társalgás során általában többet beszélek, mint a partnerem.",c:"KOMM"},
+ {n:17,t:"Képes vagyok felvidítani valakit, ha rosszkedvű.",c:"ERZELMI"},
+ {n:18,t:"Elfogadom mások véleményét, tanácsait, javaslatait.",c:"ALKALMAZKODAS"},
+ {n:19,t:"Könnyebb másokkal együtt tanulni vagy dolgozni, mint egyedül.",c:"CSAPAT"},
+ {n:20,t:"Az ígéreteimet betartom.",c:"FELELOSSEG"},
+ {n:21,t:"Könnyen megoldom a szöveges feladatokat.",c:"MATEK"},
+ {n:22,t:"Jó megfigyelő vagyok.",c:"FIGYELEM"},
+ {n:23,t:"A nehézségek megoldásában kitartó vagyok.",c:"PROBLEMA"},
+ {n:24,t:"Általában jobb ötleteim vannak, mint a többieknek.",c:"KREATIV"},
+ {n:25,t:"Csipesszel vagy más kis eszközzel végzett munka jól megy nekem.",c:"KEZMOZGAS"},
+ {n:26,t:"A bűvös kockát gyorsan kirakom.",c:"TERBELI"},
+ {n:27,t:"Feleléskor vagy dolgozatíráskor nem izgulok.",c:"STRESSZ"},
+ {n:28,t:"Órákról vagy találkozókról nem szoktam elkésni.",c:"PONTOSSAG"},
+ {n:29,t:"Jó előadó vagyok.",c:"KOMM"},
+ {n:30,t:"A legtöbb kérdésről önálló véleményem van.",c:"ONALLO"},
+ {n:31,t:"Stresszes helyzetekben nem szoktam leblokkolni.",c:"STRESSZ"},
+ {n:32,t:"Képes vagyok megkönnyíteni mások életét.",c:"ERZELMI"},
+ {n:33,t:"Tudom, mikor kell engedni vagy kompromisszumot kötni.",c:"ALKALMAZKODAS"},
+ {n:34,t:"Hozzájárulok a jó osztályközösség / csapatszellem kialakításához.",c:"CSAPAT"},
+ {n:35,t:"Döntéseim következményeit vállalom.",c:"FELELOSSEG"},
+ {n:36,t:"Ésszerűen szervezem meg az elfoglaltságaimat.",c:"SZERVEZES"},
+ {n:37,t:"Képes vagyok hosszú ideig egy dologra figyelni.",c:"FIGYELEM"},
+ {n:38,t:"A kényes kérdések vagy helyzetek megoldása nem okoz gondot.",c:"PROBLEMA"},
+ {n:39,t:"Folyton újításokkal állok elő.",c:"KREATIV"},
+ {n:40,t:"Ügyesen használom a szerszámokat, eszközöket.",c:"KEZMOZGAS"},
+ {n:41,t:"Könnyen eligazodok egy labirintusban.",c:"TERBELI"},
+ {n:42,t:"Veszélyhelyzetekben nem veszítem el a fejem.",c:"STRESSZ"},
+ {n:43,t:"Jól osztom be az időmet.",c:"SZERVEZES"},
+ {n:44,t:"Örülök, ha önálló feladatokkal bíznak meg.",c:"ONALLO"},
+ {n:45,t:"Többnyire rájövök a matematikai összefüggésekre.",c:"MATEK"},
+ {n:46,t:"Kínos helyzetben is könnyen kivágom magam.",c:"PROBLEMA"},
+ {n:47,t:"A bajban együtt érzek másokkal.",c:"ERZELMI"},
+ {n:48,t:"Figyelembe veszem mások igényeit, elképzeléseit.",c:"ALKALMAZKODAS"},
+ {n:49,t:"Szükség esetén a többiek érdekeit saját céljaim elé helyezem.",c:"CSAPAT"},
+ {n:50,t:"A rám bízott feladatokat lelkiismeretesen elvégzem.",c:"FELELOSSEG"},
+ {n:51,t:"Jól tudok szorozni és osztani.",c:"MATEK"},
+ {n:52,t:"A tanulásban / munkában alapos és pontos vagyok.",c:"PONTOSSAG"},
+ {n:53,t:"A legjobb megoldásokon töröm a fejem.",c:"KOMM"},
+ {n:54,t:"Vonzódom az új / ismeretlen dolgok iránt.",c:"KREATIV"},
+ {n:55,t:"A mozgásos tevékenységekben jó vagyok.",c:"KEZMOZGAS"},
+ {n:56,t:"Távolságbecsléseim mindig bejönnek.",c:"TERBELI"},
+ {n:57,t:"Többnyire utánajárok / utánanézek a dolgoknak, információknak.",c:"PONTOSSAG"},
+ {n:58,t:"A munkaszervezésben profi vagyok.",c:"SZERVEZES"},
+ {n:59,t:"Másokhoz képest nagyon önálló vagyok.",c:"ONALLO"},
+ {n:60,t:"Egyszerre több dologra tudok figyelni.",c:"FIGYELEM"},
+ {n:61,t:"Bármilyen témáról tudok beszélgetni a többiekkel.",c:"KOMM"},
+ {n:62,t:"Önzetlenül segítek másokon.",c:"ERZELMI"},
+ {n:63,t:"Könnyen beilleszkedem egy csoportba, közösségbe.",c:"ALKALMAZKODAS"},
+ {n:64,t:"Építő jellegű javaslataimmal hozzásegítem a csapatot a sikerhez.",c:"CSAPAT"},
+ {n:65,t:"A mindennapi életben felmerülő problémákra könnyen találok megoldást.",c:"PROBLEMA"},
+ {n:66,t:"A mértékegységek átváltása jól megy nekem.",c:"MATEK"},
+ {n:67,t:"Könnyen észreveszem az elírásokat, számolási hibákat.",c:"PONTOSSAG"},
+ {n:68,t:"A vezetői megbízatással együtt járó felelősséget jól tudnám kezelni.",c:"FELELOSSEG"},
+ {n:69,t:"Élénk fantáziával, jó képzelőerővel rendelkezem.",c:"KREATIV"},
+ {n:70,t:"Ügyes kezű vagyok.",c:"KEZMOZGAS"},
+ {n:71,t:"Alaprajz alapján könnyen el tudom képzelni a tárgyat.",c:"TERBELI"},
+ {n:72,t:"Akkor is nyugodt maradok, ha mások feszültek, idegesek körülöttem.",c:"STRESSZ"},
+ {n:73,t:"Napirendemet többnyire tartani tudom.",c:"SZERVEZES"},
+ {n:74,t:"Ritkán szorulok mások segítségére.",c:"ONALLO"},
+ {n:75,t:"Tanulás közben nem kalandoznak el a gondolataim.",c:"FIGYELEM"},
+];
+const KEPESSEG_INFO = {
+ KOMM:{name:"Kommunikáció", magas:"Jó kommunikációs képesség — érthetően fogalmazol, könnyen bekapcsolódsz egy beszélgetésbe.", kozepes:"Átlagos szintű kommunikációs képesség.", alacsony:"A kommunikációs készségeid még fejlesztésre szorulnak."},
+ ERZELMI:{name:"Érzelmi intelligencia", magas:"Magas szintű kapcsolati készség — jól megérted és segíted mások érzelmeit.", kozepes:"Átlagos szintű kapcsolati készség.", alacsony:"A kapcsolati készségeid fejlesztésre szorulnak."},
+ ALKALMAZKODAS:{name:"Alkalmazkodás", magas:"Jó alkalmazkodó képesség — könnyen beilleszkedsz egy közösségbe.", kozepes:"Átlagos alkalmazkodási képesség.", alacsony:"Az alkalmazkodó képességed fejlesztésre szorul."},
+ PROBLEMA:{name:"Problémamegoldás", magas:"Jó problémamegoldó képesség — könnyen megtalálod a legjobb megoldást.", kozepes:"Átlagos szintű problémamegoldás.", alacsony:"A problémamegoldó képességed fejlesztésre szorul."},
+ KEZMOZGAS:{name:"Kéz- és mozgásügyesség", magas:"Jó kéz- és mozgásügyesség.", kozepes:"Átlagos szintű kéz- és mozgásügyesség.", alacsony:"A kéz- és mozgásügyességed fejlesztésre szorul."},
+ FIGYELEM:{name:"Figyelem", magas:"Jó figyelemkoncentrációs képesség.", kozepes:"Átlagos szintű figyelemkoncentráció.", alacsony:"A figyelemkoncentrációd fejlesztésre szorul."},
+ MATEK:{name:"Matematika", magas:"Jó matematikai képesség.", kozepes:"Átlagos szintű matematikai képesség.", alacsony:"A matematikai képességed fejlesztésre szorul."},
+ CSAPAT:{name:"Csapatmunka", magas:"Csapatmunkához szükséges készségeid magas szintűek.", kozepes:"Csapatmunkához szükséges készségeid átlagos szintűek.", alacsony:"A csapatmunkához szükséges készségeid fejlesztésre szorulnak."},
+ KREATIV:{name:"Kreativitás", magas:"Alkotóképességed (kreativitásod) magas szintű.", kozepes:"Alkotóképességed átlagos szintű.", alacsony:"Az alkotóképességed fejlesztésre szorul."},
+ TERBELI:{name:"Térbeli tájékozódás", magas:"Jó térbeli tájékozódási képesség.", kozepes:"Átlagos szintű térbeli tájékozódás.", alacsony:"A térbeli tájékozódási képességed fejlesztésre szorul."},
+ STRESSZ:{name:"Stressz tolerancia", magas:"Kiemelkedő feszültségtűrő képesség.", kozepes:"Átlagos feszültségtűrő képesség.", alacsony:"A stressztűrő képességed fejlesztésre szorul."},
+ PONTOSSAG:{name:"Pontosság", magas:"A pontosság kiemelkedő személyes erőforrásod.", kozepes:"Átlagos szintű pontosság.", alacsony:"A pontosságod javításra szorul."},
+ SZERVEZES:{name:"Szervezés", magas:"Magas szintű szervezői képesség.", kozepes:"Átlagos szintű szervezői képesség.", alacsony:"A szervezői képességed fejlesztésre szorul."},
+ ONALLO:{name:"Önállóság", magas:"Önálló vagy.", kozepes:"Részben önálló vagy.", alacsony:"Az önállóság terén fejlesztésre szorulsz."},
+ FELELOSSEG:{name:"Felelősségvállalás", magas:"Felelősségérzeted magas szintű.", kozepes:"Hozzáállásod részben felelősségteljes.", alacsony:"A felelősségvállalás terén fejlődnöd kellene."},
+};
+const KEP_ORDER = ["KOMM","ERZELMI","ALKALMAZKODAS","PROBLEMA","KEZMOZGAS","FIGYELEM","MATEK","CSAPAT","KREATIV","TERBELI","STRESSZ","PONTOSSAG","SZERVEZES","ONALLO","FELELOSSEG"];
+const SZABAD_ORDER = ["TARGY","GONDOLAT","ALKOTAS","EMBER","KEZDEMENYEZES","VEGREHAJTAS"];
+const AHGM_ORDER = ["A","H","G","M"];
+
+const JOB_FIELDS = [
+ {key:"anyag", label:"Milyen anyaggal / eszközökkel dolgozol?"},
+ {key:"ugyes", label:"Miben kell ügyesnek lenned?"},
+ {key:"ora", label:"Napi hány órát kell dolgoznod?"},
+ {key:"eredmeny", label:"Mi a munkád eredménye?"},
+ {key:"iskola", label:"Milyen iskolatípus és mennyi idő kell hozzá?"},
+];
+
+/* =========================================================
+   ÁLLAPOT
+========================================================= */
+const STORE_KEY = "palyaorientacio_kalandnaplo_v1";
+let state = { ahgm:{}, szabad:{}, kepesseg:{}, jobs:[{}] };
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      state = Object.assign({ahgm:{},szabad:{},kepesseg:{},jobs:[{}]}, parsed);
+      if(!state.jobs || !state.jobs.length) state.jobs = [{}];
+    }
+  }catch(e){ /* private mode / disabled storage — just start fresh */ }
+}
+function saveState(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){ /* ignore */ }
+}
+
+/* =========================================================
+   RENDER: TABS
+========================================================= */
+const TABS = [
+ {id:"ahgm", label:"1. Érdeklődés", n:"A·H·G·M"},
+ {id:"szabad", label:"2. Szabadidő", n:"48"},
+ {id:"kepesseg", label:"3. Képességek", n:"75"},
+ {id:"jobs", label:"4. Álomszakmák", n:"✎"},
+ {id:"eredmenyek", label:"Eredmények", n:"★"},
+];
+let activeTab = "ahgm";
+
+function renderTabs(){
+  const nav = document.getElementById("tabs");
+  nav.innerHTML = "";
+  TABS.forEach(tab=>{
+    const btn = document.createElement("button");
+    btn.className = "tab-btn"; btn.type="button"; btn.role="tab";
+    btn.setAttribute("aria-selected", tab.id===activeTab ? "true":"false");
+    const done = isTabDone(tab.id);
+    btn.innerHTML = `<span>${tab.label}</span><span class="n mono">${tab.n}</span>${done?'<span class="done">✓</span>':''}`;
+    btn.addEventListener("click", ()=>{ activeTab = tab.id; renderAll(); window.scrollTo({top:0, behavior:"smooth"}); });
+    nav.appendChild(btn);
+  });
+}
+function isTabDone(id){
+  if(id==="ahgm") return Object.keys(state.ahgm).length>0 && AHGM.every(i=>state.ahgm[i.n]!==undefined);
+  if(id==="szabad") return SZABAD.every(i=>state.szabad[i.n]!==undefined);
+  if(id==="kepesseg") return KEPESSEG.every(i=>state.kepesseg[i.n]!==undefined);
+  if(id==="jobs") return state.jobs.some(j=>j.cim && j.cim.trim());
+  return false;
+}
+
+/* =========================================================
+   RENDER: PROGRESS
+========================================================= */
+function renderProgress(){
+  const total = AHGM.length + SZABAD.length + KEPESSEG.length;
+  let answered = Object.keys(state.ahgm).length + Object.keys(state.szabad).length + Object.keys(state.kepesseg).length;
+  answered = Math.min(answered, total);
+  const pct = total ? Math.round((answered/total)*100) : 0;
+  document.getElementById("pct").textContent = pct+"%";
+  document.getElementById("xpfill").style.width = pct+"%";
+}
+
+/* =========================================================
+   RENDER: KÉRDÉSSOROK
+========================================================= */
+function scaleRow(items, current, onPick){
+  const labels = ["Egyáltalán nem","Kis mértékben","Közepesen","Jelentősen","Teljes mértékben"];
+  const wrap = document.createElement("div");
+  wrap.className = "scale";
+  [0,1,2,3,4].forEach(v=>{
+    const b = document.createElement("button");
+    b.type="button";
+    b.setAttribute("aria-pressed", current===v ? "true":"false");
+    b.innerHTML = `<span class="v mono">${v}</span><span class="l">${labels[v]}</span>`;
+    b.addEventListener("click", ()=>onPick(v));
+    wrap.appendChild(b);
+  });
+  return wrap;
+}
+
+function renderScaleQuest(container, items, stateBucket, catLookup){
+  const card = document.createElement("div"); card.className="card";
+  items.forEach(it=>{
+    const row = document.createElement("div"); row.className="item";
+    const top = document.createElement("div"); top.className="item-top";
+    top.innerHTML = `<span class="item-num mono">${it.n}.</span><span class="item-text">${it.t}</span>`;
+    row.appendChild(top);
+    const sc = scaleRow(items, stateBucket[it.n], (v)=>{ stateBucket[it.n]=v; saveState(); renderAll(); });
+    row.appendChild(sc);
+    card.appendChild(row);
+  });
+  container.appendChild(card);
+}
+
+function renderAHGM(container){
+  const head = document.createElement("div"); head.className="quest-head";
+  head.innerHTML = `<div class="eyebrow">1. küldetés</div><h2>Merre húz az érdeklődésed?</h2>
+   <p>Pipáld ki, melyik állítás igaz rád! Négy nagy terület van (Agrár, Humán, Gazdaság-szolgáltatás, Műszaki) — a végén megnézzük, melyikből gyűlt össze a legtöbb pipa.</p>`;
+  container.appendChild(head);
+  const card = document.createElement("div"); card.className="card";
+  AHGM.forEach(it=>{
+    const row = document.createElement("div"); row.className="item";
+    const top = document.createElement("div"); top.className="item-top";
+    top.innerHTML = `<span class="item-num mono">${it.n}.</span><span class="item-text">${it.t}</span>`;
+    row.appendChild(top);
+    const tr = document.createElement("div"); tr.className="toggle-row";
+    const pressed = !!state.ahgm[it.n];
+    const btn = document.createElement("button");
+    btn.type="button"; btn.className="toggle"; btn.setAttribute("aria-pressed", pressed?"true":"false");
+    btn.innerHTML = `<span class="dot"></span> ${pressed ? "Igaz rám" : "Igaz rám?"}`;
+    btn.addEventListener("click", ()=>{
+      if(state.ahgm[it.n]) delete state.ahgm[it.n]; else state.ahgm[it.n]=true;
+      saveState(); renderAll();
+    });
+    tr.appendChild(btn);
+    row.appendChild(tr);
+    card.appendChild(row);
+  });
+  container.appendChild(card);
+}
+
+function renderSZABAD(container){
+  const head = document.createElement("div"); head.className="quest-head";
+  head.innerHTML = `<div class="eyebrow">2. küldetés</div><h2>Szabadidőmérleg</h2>
+   <p>48 állítás — mindegyiknél add meg egy 0–4-es skálán, mennyire jellemző rád. Sok mindent nem az iskolapadban tanulunk meg; ez segít végiggondolni, mit csinálsz szívesen szabadidődben.</p>`;
+  container.appendChild(head);
+  renderScaleQuest(container, SZABAD, state.szabad);
+}
+
+function renderKEPESSEG(container){
+  const head = document.createElement("div"); head.className="quest-head";
+  head.innerHTML = `<div class="eyebrow">3. küldetés</div><h2>Képességek, készségek</h2>
+   <p>75 állítás, 15 területről — ez a leghosszabb küldetés, de a legtöbbet is mondja arról, miben vagy erős. 0–4-es skálán jelöld, mennyire jellemző rád.</p>`;
+  container.appendChild(head);
+  renderScaleQuest(container, KEPESSEG, state.kepesseg);
+}
+
+function renderJOBS(container){
+  const head = document.createElement("div"); head.className="quest-head";
+  head.innerHTML = `<div class="eyebrow">4. küldetés — szabad, nem pontozott</div><h2>Elképzelt foglalkozásaim</h2>`;
+  container.appendChild(head);
+
+  const prompt = document.createElement("div"); prompt.className="prompt-box";
+  prompt.innerHTML = `<p><strong>Képzelj el egy csodálatos távcsövet, ami Téged mutat tizenöt év múlva, felnőttként.</strong> Mit csinálsz pontosan? Milyen munkát végzel? Hol laksz? Kikkel töltöd az időd?</p>
+  <p>Írj be 4–6 olyan foglalkozást, ami most érdekel, és minden foglalkozáshoz töltsd ki a lenti kérdéseket. Ha nem tudod biztosan a választ — nézz utána, kérdezz meg valakit, aki ért hozzá!</p>`;
+  container.appendChild(prompt);
+
+  const list = document.createElement("div");
+  state.jobs.forEach((job, idx)=>{
+    const card = document.createElement("div"); card.className="job-card";
+    if(state.jobs.length>1){
+      const rm = document.createElement("button");
+      rm.className="job-remove"; rm.type="button"; rm.textContent="Törlés";
+      rm.addEventListener("click", ()=>{ state.jobs.splice(idx,1); saveState(); renderAll(); });
+      card.appendChild(rm);
+    }
+    const title = document.createElement("input");
+    title.type="text"; title.className="job-title"; title.placeholder=`${idx+1}. foglalkozás neve…`;
+    title.value = job.cim || "";
+    title.addEventListener("input", (e)=>{ job.cim = e.target.value; saveState(); });
+    card.appendChild(title);
+
+    JOB_FIELDS.forEach(f=>{
+      const fw = document.createElement("div"); fw.className="job-field";
+      const lbl = document.createElement("label"); lbl.textContent = f.label;
+      const ta = document.createElement("textarea"); ta.rows=2;
+      ta.value = job[f.key] || "";
+      ta.addEventListener("input", (e)=>{ job[f.key]=e.target.value; saveState(); });
+      fw.appendChild(lbl); fw.appendChild(ta);
+      card.appendChild(fw);
+    });
+    list.appendChild(card);
+  });
+  container.appendChild(list);
+
+  if(state.jobs.length < 6){
+    const add = document.createElement("button");
+    add.type="button"; add.className="add-job"; add.textContent="+ Új foglalkozás hozzáadása";
+    add.addEventListener("click", ()=>{ state.jobs.push({}); saveState(); renderAll(); });
+    container.appendChild(add);
+  }
+}
+
+/* =========================================================
+   EREDMÉNYEK
+========================================================= */
+function sumBy(items, bucket, key){
+  const totals = {};
+  items.forEach(it=>{
+    const v = bucket[it.n];
+    if(v===undefined) return;
+    totals[it[key]] = (totals[it[key]]||0) + v;
+  });
+  return totals;
+}
+function countBy(items, bucket, key){
+  const totals = {};
+  items.forEach(it=>{
+    if(!bucket[it.n]) return;
+    totals[it[key]] = (totals[it[key]]||0) + 1;
+  });
+  return totals;
+}
+
+function statBar(name, value, max, ticks, badgeText, badgeClass){
+  const row = document.createElement("div"); row.className="stat-row";
+  const nm = document.createElement("div"); nm.className="stat-name"; nm.textContent=name;
+  const track = document.createElement("div"); track.className="stat-track";
+  const fill = document.createElement("div"); fill.className="stat-fill";
+  const pct = max? Math.min(100,(value/max)*100) : 0;
+  requestAnimationFrame(()=>{ fill.style.width = pct+"%"; });
+  track.appendChild(fill);
+  (ticks||[]).forEach(t=>{
+    const tk = document.createElement("div"); tk.className="stat-tick";
+    tk.style.left = (Math.min(100,(t.at/max)*100))+"%";
+    tk.innerHTML = `<span>${t.label}</span>`;
+    track.appendChild(tk);
+  });
+  row.appendChild(nm); row.appendChild(track);
+  const val = document.createElement("div"); val.className="stat-val mono"; val.textContent = value;
+  row.appendChild(val);
+  if(badgeText){
+    const bd = document.createElement("div"); bd.className="stat-badge "+badgeClass; bd.textContent=badgeText;
+    row.appendChild(bd);
+  }
+  return row;
+}
+
+function renderEREDMENYEK(container){
+  const head = document.createElement("div"); head.className="quest-head";
+  head.innerHTML = `<div class="eyebrow">Karakterlap</div><h2>Eredmények</h2>
+   <p>Ahogy haladsz a küldetésekkel, itt folyamatosan frissül az összesítés. Minél többet töltesz ki, annál pontosabb a kép.</p>`;
+  container.appendChild(head);
+
+  const ahgmAnswered = Object.keys(state.ahgm).length;
+  const szabadAnswered = Object.keys(state.szabad).length;
+  const kepAnswered = Object.keys(state.kepesseg).length;
+
+  // --- AHGM ---
+  const c1 = document.createElement("div"); c1.className="card";
+  const b1 = document.createElement("div"); b1.className="result-block";
+  b1.innerHTML = `<h3>Érdeklődési területek (A·H·G·M)</h3>`;
+  if(ahgmAnswered===0){
+    b1.appendChild(hint("Még nincs kitöltve — nézd meg az 1. küldetést!"));
+  } else {
+    const counts = countBy(AHGM, state.ahgm, "c");
+    const max = Math.max(0, ...AHGM_ORDER.map(k=>counts[k]||0));
+    AHGM_ORDER.slice().sort((a,b)=>(counts[b]||0)-(counts[a]||0)).forEach(k=>{
+      const v = counts[k]||0;
+      b1.appendChild(statBar(AHGM_INFO[k].name, v, 4, []));
+    });
+    const top = AHGM_ORDER.filter(k=>(counts[k]||0)===max && max>0);
+    if(top.length){
+      const desc = document.createElement("div");
+      desc.innerHTML = top.map(k=>`<span class="top-pick">${AHGM_INFO[k].name}</span><p class="result-desc">${AHGM_INFO[k].desc}<br><em>Kapcsolódó ágazatok: ${AHGM_INFO[k].related}</em></p>`).join("");
+      b1.appendChild(desc);
+    }
+  }
+  c1.appendChild(b1); container.appendChild(c1);
+
+  // --- SZABAD ---
+  const c2 = document.createElement("div"); c2.className="card"; c2.style.marginTop="16px";
+  const b2 = document.createElement("div"); b2.className="result-block";
+  b2.innerHTML = `<h3>Szabadidőmérleg</h3>`;
+  if(szabadAnswered===0){
+    b2.appendChild(hint("Még nincs kitöltve — nézd meg a 2. küldetést!"));
+  } else {
+    const totals = sumBy(SZABAD, state.szabad, "c");
+    const sorted = SZABAD_ORDER.slice().sort((a,b)=>(totals[b]||0)-(totals[a]||0));
+    sorted.forEach(k=> b2.appendChild(statBar(SZABAD_INFO[k].name, totals[k]||0, 32, [])) );
+    const topKey = sorted[0];
+    if(totals[topKey]){
+      const desc=document.createElement("p"); desc.className="result-desc";
+      desc.innerHTML = `<span class="top-pick">${SZABAD_INFO[topKey].name}</span><br>${SZABAD_INFO[topKey].desc}<br><em>Kapcsolódó terület: ${SZABAD_INFO[topKey].related}</em>`;
+      b2.appendChild(desc);
+    }
+  }
+  c2.appendChild(b2); container.appendChild(c2);
+
+  // --- KEPESSEG ---
+  const c3 = document.createElement("div"); c3.className="card"; c3.style.marginTop="16px";
+  const b3 = document.createElement("div"); b3.className="result-block";
+  b3.innerHTML = `<h3>Képességek, készségek</h3>`;
+  if(kepAnswered===0){
+    b3.appendChild(hint("Még nincs kitöltve — nézd meg a 3. küldetést!"));
+  } else {
+    const totals = sumBy(KEPESSEG, state.kepesseg, "c");
+    const sorted = KEP_ORDER.slice().sort((a,b)=>(totals[b]||0)-(totals[a]||0));
+    sorted.forEach(k=>{
+      const v = totals[k]||0;
+      const level = v>=18?"magas":(v>=12?"kozepes":"alacsony");
+      const badgeText = v>=18?"MAGAS":(v>=12?"KÖZEPES":"ALACSONY");
+      const row = statBar(KEPESSEG_INFO[k].name, v, 20, [{at:12,label:"12"},{at:18,label:"18"}], badgeText, "badge-"+level);
+      b3.appendChild(row);
+    });
+    const note = document.createElement("p"); note.className="result-desc";
+    note.innerHTML = `<strong>18 felett = magas, 12–18 = közepes, 12 alatt = alacsony</strong> szint. A legerősebb (magas) területeid mutatják, mihez van igazán tehetséged — nézzétek át együtt, mit jelentenek:`;
+    b3.appendChild(note);
+    sorted.filter(k=>(totals[k]||0)>=18).forEach(k=>{
+      const p = document.createElement("p"); p.className="result-desc";
+      p.innerHTML = `<strong>${KEPESSEG_INFO[k].name}:</strong> ${KEPESSEG_INFO[k].magas}`;
+      b3.appendChild(p);
+    });
+  }
+  c3.appendChild(b3); container.appendChild(c3);
+
+  // --- JOBS ---
+  const filledJobs = state.jobs.filter(j=>j.cim && j.cim.trim());
+  if(filledJobs.length){
+    const c4 = document.createElement("div"); c4.className="card"; c4.style.marginTop="16px";
+    const b4 = document.createElement("div"); b4.className="result-block";
+    b4.innerHTML = `<h3>Elképzelt foglalkozások</h3>`;
+    filledJobs.forEach(j=>{
+      const p = document.createElement("p"); p.className="result-desc";
+      p.innerHTML = `<strong>${j.cim}</strong>`;
+      b4.appendChild(p);
+    });
+    c4.appendChild(b4); container.appendChild(c4);
+  }
+
+  const note = document.createElement("div"); note.className="note";
+  note.innerHTML = "Forrás és hivatalos kiértékelő kulcs: Nemzeti Pályaorientációs Portál. Ez az összesítés tájékoztató jellegű — a legjobb, ha az eredményeket közösen beszélitek át, nem önmagában a számok döntenek.";
+  container.appendChild(note);
+}
+function hint(text){ const d=document.createElement("div"); d.className="empty-hint"; d.textContent=text; return d; }
+
+/* =========================================================
+   FŐ RENDER
+========================================================= */
+function renderAll(){
+  renderTabs();
+  renderProgress();
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  const panel = document.createElement("section");
+  panel.className = "panel active";
+  if(activeTab==="ahgm") renderAHGM(panel);
+  else if(activeTab==="szabad") renderSZABAD(panel);
+  else if(activeTab==="kepesseg") renderKEPESSEG(panel);
+  else if(activeTab==="jobs") renderJOBS(panel);
+  else if(activeTab==="eredmenyek") renderEREDMENYEK(panel);
+  main.appendChild(panel);
+}
+
+const resetBtn = document.getElementById("resetBtn");
+const resetConfirm = document.getElementById("resetConfirm");
+const resetCancel = document.getElementById("resetCancel");
+const resetConfirmBtn = document.getElementById("resetConfirmBtn");
+
+resetBtn.addEventListener("click", ()=>{
+  resetConfirm.hidden = false;
+  resetBtn.hidden = true;
+});
+resetCancel.addEventListener("click", ()=>{
+  resetConfirm.hidden = true;
+  resetBtn.hidden = false;
+});
+resetConfirmBtn.addEventListener("click", ()=>{
+  state = { ahgm:{}, szabad:{}, kepesseg:{}, jobs:[{}] };
+  saveState(); activeTab="ahgm";
+  resetConfirm.hidden = true;
+  resetBtn.hidden = false;
+  renderAll();
+});
+
+loadState();
+renderAll();
+</script>
+</body>
+</html>
+
